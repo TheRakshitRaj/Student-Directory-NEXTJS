@@ -1,69 +1,219 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { initialStudents } from "@/data/students";
+import StudentCard from "@/components/StudentCard";
+import SearchBar from "@/components/SearchBar";
+import StatsOverview from "@/components/StatsOverview";
+import { Student } from "@/types/student";
 
 export default function Home() {
+  const [students] = useState<Student[]>(initialStudents);
+  const [search, setSearch] = useState("");
+  const [department, setDepartment] = useState("All");
+  const [year, setYear] = useState("All");
+  const [status, setStatus] = useState("All");
+  const [sortBy, setSortBy] = useState<"name" | "gpa" | "attendance">("name");
+
+  // Dynamic filter lists
+  const departments = useMemo(() => {
+    return ["All", ...Array.from(new Set(students.map((s) => s.department)))];
+  }, [students]);
+
+  const academicYears = ["All", "1st Year", "2nd Year", "3rd Year", "4th Year"];
+  const statuses = ["All", "Active", "On Leave", "Graduated"];
+
+  // Filter and sort logic
+  const filteredStudents = useMemo(() => {
+    return students
+      .filter((student) => {
+        const matchesSearch =
+          student.name.toLowerCase().includes(search.toLowerCase()) ||
+          student.email.toLowerCase().includes(search.toLowerCase()) ||
+          student.rollNumber.toLowerCase().includes(search.toLowerCase());
+
+        const matchesDepartment =
+          department === "All" || student.department === department;
+
+        const matchesYear = year === "All" || student.year === year;
+
+        const matchesStatus = status === "All" || student.status === status;
+
+        return matchesSearch && matchesDepartment && matchesYear && matchesStatus;
+      })
+      .sort((a, b) => {
+        if (sortBy === "gpa") return b.gpa - a.gpa;
+        if (sortBy === "attendance") return b.attendance - a.attendance;
+        return a.name.localeCompare(b.name);
+      });
+  }, [students, search, department, year, status, sortBy]);
+
+  const resetFilters = () => {
+    setSearch("");
+    setDepartment("All");
+    setYear("All");
+    setStatus("All");
+    setSortBy("name");
+  };
+
+  const hasActiveFilters =
+    search !== "" || department !== "All" || year !== "All" || status !== "All";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="min-h-screen bg-gray-50 px-6 py-10">
+      <div className="mx-auto max-w-6xl">
+        
+        {/* Header Title & Subtitle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+              Student Directory
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Browse, filter, and review verified student records across university faculties.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/departments"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 transition-colors"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <span>🏛</span>
+              <span>Departments</span>
+            </Link>
+            <Link
+              href="/students/new"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
             >
-              Learning
-            </a>{" "}
-            center.
+              <span>+</span>
+              <span>Add Student</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Overview Stats Bar */}
+        <StatsOverview students={students} />
+
+        {/* Search & Filters Card */}
+        <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <SearchBar value={search} onChange={setSearch} />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            {/* Department dropdown */}
+            <div>
+              <label className="block text-gray-500 font-medium mb-1">Department</label>
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+              >
+                {departments.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Year dropdown */}
+            <div>
+              <label className="block text-gray-500 font-medium mb-1">Academic Year</label>
+              <select
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+              >
+                {academicYears.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status dropdown */}
+            <div>
+              <label className="block text-gray-500 font-medium mb-1">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+              >
+                {statuses.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort by */}
+            <div>
+              <label className="block text-gray-500 font-medium mb-1">Sort By</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "name" | "gpa" | "attendance")}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+              >
+                <option value="name">Name (A-Z)</option>
+                <option value="gpa">Highest GPA</option>
+                <option value="attendance">Highest Attendance</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Active Filter Indicators */}
+          {hasActiveFilters && (
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+              <span className="text-gray-500">
+                Filtered view active • Showing {filteredStudents.length} of {students.length}
+              </span>
+              <button
+                onClick={resetFilters}
+                className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
+              >
+                Reset all filters
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Results Count Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider font-mono">
+            {filteredStudents.length} Students Listed
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Students Cards Grid */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredStudents.map((student) => (
+            <StudentCard key={student.id} student={student} />
+          ))}
         </div>
-      </main>
-    </div>
+
+        {/* Empty State */}
+        {filteredStudents.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center my-6">
+            <span className="text-4xl block mb-2">🔍</span>
+            <h3 className="text-base font-bold text-gray-800">No students match your criteria</h3>
+            <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto">
+              Try adjusting your search terms or resetting the department and year filters.
+            </p>
+            <button
+              onClick={resetFilters}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-xs hover:bg-blue-700 transition-colors"
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+
+      </div>
+    </main>
   );
 }
